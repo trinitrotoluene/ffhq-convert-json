@@ -6,7 +6,11 @@
   "types": "lib/index.d.ts",
   "scripts": {
     "build": "tsc -d",
-    "run": "npm run build && node lib/index.js"
+    "run": "npm run build && node lib/index.js",
+    "localInstall": "npm run build && npm i -g ."
+  },
+  "bin": {
+    "ffhq-convert-json": "bin/ffhq-convert-json.js"
   },
   "repository": {
     "type": "git",

@@ -1,38 +1,79 @@
-import {Argument, program} from 'commander';
+import {program} from 'commander';
 import packageJson from './package.json';
 import {promises as fs} from 'fs';
+import path from 'path';
 
 
 program.name(packageJson.name);
 program.description(packageJson.description);
 program.version(packageJson.version);
 
-program.command('convert')
+program.command('yolo-convert')
     .description('Converts and flattens the dataset from an associated JSON file')
     .argument('jsonFile', 'The JSON file to convert')
-    .addArgument(new Argument('format', 'The format to convert to').choices(['yolo']))
+    .argument('className', 'className=number', (str) => {
+        const vals = str.split('=');
+        return [vals[0], vals[1]];
+    })
+    .argument('outDir', 'The directory path to output to')
     .action(convert);
 
-type Format = 'yolo';
+program.parse();
 
-async function convert(jsonFile: string, format: Format) {
-    const fileExists = await fs.stat(jsonFile)
-        .then(() => true, () => false);
-
-    if (!fileExists) {
+async function readJsonAsync(jsonFile: string) {
+    if (!(await fileExistsAsync(jsonFile))) {
         console.error(`Could not find JSON file: ${jsonFile}`);
+        throw new Error();
     }
 
+    const file = await fs.readFile(jsonFile, 'utf-8');
+    return JSON.parse(file) as Record<string, DatasetItem>;
+}
+
+function fileExistsAsync(fileName: string) {
+    return fs.stat(fileName).then(() => true, () => false);
+}
+
+async function convert(jsonFile: string, className: string[], outDir: string) {
     try {
-        const file = await fs.readFile(jsonFile, 'utf-8');
-        const json = JSON.parse(file) as Record<string, DatasetItem>;
+        const json = await readJsonAsync(jsonFile);
+        const dirCache: Record<string, boolean> = {};
+
         for (const key in json) {
             const item = json[key];
+            const sourcePath = getItemPath(item);
 
+            if (!(await fileExistsAsync(sourcePath))) {
+                continue;
+            }
+
+            const annotation = generateYoloAnnotation(1, item);
+
+            if (!dirCache[item.category]) {
+                const dirName = path.join(outDir, item.category);
+                console.log(`Creating dir ${dirName}`);
+                await fs.mkdir(dirName, {recursive: true});
+                dirCache[item.category] = true;
+            }
+
+            const outFile = path.join(outDir, item.category, path.basename(sourcePath));
+            const outAnnotation = path.format({...path.parse(outFile), base: '', ext: '.txt'});
+            console.log(`Out: ${outFile}`);
+            console.log(`Out: ${outAnnotation}`);
+
+            await fs.copyFile(sourcePath, outFile);
+            await fs.writeFile(outAnnotation, annotation);
         }
     } catch (e) {
-        console.error(`Failed to parse JSON file:\r\n${e}`);
+        console.error(`An error occurred during conversion:\r\n${e}`);
     }
+}
+
+function getItemPath(item: DatasetItem) {
+    const basePath = item.image.file_path.replace('images1024x1024/', '');
+    // todo: derive class from this?
+    const fileName = path.basename(basePath, path.extname(basePath)) + '_Mask' + '.jpg';
+    return path.join(path.dirname(basePath), fileName);
 }
 
 type BBox = [x1: number, y1: number, x2: number, y2: number]
@@ -61,16 +102,16 @@ function scaleBBox(source: Dimension, target: Dimension, boundingBox: BBox): BBo
 }
 
 interface DerivedBBox {
-    centre_x: number;
-    centre_y: number;
+    centreX: number;
+    centreY: number;
     dimensions: Dimension;
 }
 
 function convertBBox(boundingBox: BBox): DerivedBBox {
     const [x1, y1, x2, y2] = boundingBox;
     return {
-        centre_x: (x1 + x2) / 2,
-        centre_y: (y1 + y2) / 2,
+        centreX: (x1 + x2) / 2,
+        centreY: (y1 + y2) / 2,
         dimensions: [
             (x2 - x1),
             (y2 - y1)
@@ -81,8 +122,8 @@ function convertBBox(boundingBox: BBox): DerivedBBox {
 function clampDerivedBBox(boundingBox: DerivedBBox, dimensions: Dimension): DerivedBBox {
     const [width, height] = dimensions;
     return {
-        centre_x: boundingBox.centre_x / width,
-        centre_y: boundingBox.centre_y / height,
+        centreX: boundingBox.centreX / width,
+        centreY: boundingBox.centreY / height,
         dimensions: [
             boundingBox.dimensions[0] / width,
             boundingBox.dimensions[1] / height
@@ -90,7 +131,7 @@ function clampDerivedBBox(boundingBox: DerivedBBox, dimensions: Dimension): Deri
     };
 }
 
-function generateYoloAnnotation(item_class: number, item: DatasetItem): string {
+function generateYoloAnnotation(itemClass: number, item: DatasetItem): string {
     // rescale the bounding box
     const scaledBBox = scaleBBox(
         item.in_the_wild.pixel_size,
@@ -106,5 +147,5 @@ function generateYoloAnnotation(item_class: number, item: DatasetItem): string {
 
     // format to YOLO line
     const [bboxWidth, bboxHeight] = clampedBBox.dimensions;
-    return `${item_class} ${clampedBBox.centre_x} ${clampedBBox.centre_y} ${bboxWidth} ${bboxHeight}`;
+    return `${itemClass} ${clampedBBox.centreX} ${clampedBBox.centreY} ${bboxWidth} ${bboxHeight}`;
 }
