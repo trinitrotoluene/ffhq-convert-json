@@ -1,0 +1,31 @@
+{
+  "name": "ffhq-convert-json",
+  "version": "0.1.0",
+  "description": "Converts the JSON metadata contained in the FFHQ dataset to model-compatible formats",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "scripts": {
+    "build": "tsc -d",
+    "run": "npm run build && node lib/index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/trinitrotoluene/ffhq-convert-json.git"
+  },
+  "author": "trinitrotoluene",
+  "license": "UNLICENSED",
+  "bugs": {
+    "url": "https://github.com/trinitrotoluene/ffhq-convert-json/issues"
+  },
+  "homepage": "https://github.com/trinitrotoluene/ffhq-convert-json#readme",
+  "dependencies": {
+    "commander": "^9.1.0"
+  },
+  "devDependencies": {
+    "typescript": "^4.6.2",
+    "@types/node": "^17.0.23",
+    "@typescript-eslint/eslint-plugin": "^5.16.0",
+    "@typescript-eslint/parser": "^5.16.0",
+    "eslint": "^8.11.0"
+  }
+}
