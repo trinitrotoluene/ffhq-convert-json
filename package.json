@@ -5,8 +5,8 @@
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
   "scripts": {
-    "build": "tsc -d",
-    "run": "npm run build && node lib/index.js",
+    "build": "tsc --build src",
+    "exec": "npm run build && node lib/index.js",
     "localInstall": "npm run build && npm i -g ."
   },
   "bin": {

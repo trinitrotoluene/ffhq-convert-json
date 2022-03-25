@@ -1,24 +1,9 @@
-import {program} from 'commander';
-import packageJson from './package.json';
 import {promises as fs} from 'fs';
+import {DatasetItem} from './datasetItem';
 import path from 'path';
-
-
-program.name(packageJson.name);
-program.description(packageJson.description);
-program.version(packageJson.version);
-
-program.command('yolo-convert')
-    .description('Converts and flattens the dataset from an associated JSON file')
-    .argument('jsonFile', 'The JSON file to convert')
-    .argument('className', 'className=number', (str) => {
-        const vals = str.split('=');
-        return [vals[0], vals[1]];
-    })
-    .argument('outDir', 'The directory path to output to')
-    .action(convert);
-
-program.parse();
+import {Dimension} from './dimension';
+import {BBox} from './bbox';
+import {DerivedBBox} from './derivedBBox';
 
 async function readJsonAsync(jsonFile: string) {
     if (!(await fileExistsAsync(jsonFile))) {
@@ -34,7 +19,7 @@ function fileExistsAsync(fileName: string) {
     return fs.stat(fileName).then(() => true, () => false);
 }
 
-async function convert(jsonFile: string, className: string[], outDir: string) {
+export default async function (jsonFile: string, className: string[], outDir: string) {
     try {
         const json = await readJsonAsync(jsonFile);
         const dirCache: Record<string, boolean> = {};
@@ -76,21 +61,6 @@ function getItemPath(item: DatasetItem) {
     return path.join(path.dirname(basePath), fileName);
 }
 
-type BBox = [x1: number, y1: number, x2: number, y2: number]
-type Dimension = [width: number, height: number]
-
-interface DatasetItem {
-    category: 'training' | 'validation';
-    image: {
-        file_path: string
-        pixel_size: Dimension
-    };
-    in_the_wild: {
-        pixel_size: Dimension
-        face_rect: BBox
-    };
-}
-
 function scaleBBox(source: Dimension, target: Dimension, boundingBox: BBox): BBox {
     const [sX, sY] = source;
     const [tX, tY] = target;
@@ -99,12 +69,6 @@ function scaleBBox(source: Dimension, target: Dimension, boundingBox: BBox): BBo
 
     const [x1, y1, x2, y2] = boundingBox;
     return [x1 * xRatio, y1 * yRatio, x2 * xRatio, y2 * yRatio];
-}
-
-interface DerivedBBox {
-    centreX: number;
-    centreY: number;
-    dimensions: Dimension;
 }
 
 function convertBBox(boundingBox: BBox): DerivedBBox {

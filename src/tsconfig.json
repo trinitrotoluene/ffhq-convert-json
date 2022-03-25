@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "strict": true,
+    "rootDir": "./",
+    "outDir": "../lib/",
+    "resolveJsonModule": true,
+    "module": "CommonJS",
+    "target": "ES2016",
+    "esModuleInterop": true,
+    "composite": true
+  },
+  "references": [
+    {
+      "path": "../"
+    }
+  ]
+}
