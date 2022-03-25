@@ -4,31 +4,18 @@ import path from 'path';
 import {Dimension} from './dimension';
 import {BBox} from './bbox';
 import {DerivedBBox} from './derivedBBox';
-
-async function readJsonAsync(jsonFile: string) {
-    if (!(await fileExistsAsync(jsonFile))) {
-        console.error(`Could not find JSON file: ${jsonFile}`);
-        throw new Error();
-    }
-
-    const file = await fs.readFile(jsonFile, 'utf-8');
-    return JSON.parse(file) as Record<string, DatasetItem>;
-}
-
-function fileExistsAsync(fileName: string) {
-    return fs.stat(fileName).then(() => true, () => false);
-}
+import FileUtils from './fileUtils';
 
 export default async function (jsonFile: string, className: string[], outDir: string) {
     try {
-        const json = await readJsonAsync(jsonFile);
+        const json = await FileUtils.readJsonAsync(jsonFile);
         const dirCache: Record<string, boolean> = {};
 
         for (const key in json) {
             const item = json[key];
             const sourcePath = getItemPath(item);
 
-            if (!(await fileExistsAsync(sourcePath))) {
+            if (!(await FileUtils.existsAsync(sourcePath))) {
                 continue;
             }
 
